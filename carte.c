@@ -6,5 +6,5 @@ void afficher_carte() {
 }
 
 void deplacer() {
-    printf("Deplacement du plongeur (à venir).\n");
+    printf("Deplacement du plongeur (a venir).\n");
 }

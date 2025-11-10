@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> // Ajout pour strcmp (necessaire pour le Crabe Geant)
+#include <string.h>
 #include "joueur.h"
 #include "creatures.h"
 
@@ -14,7 +14,6 @@ void initialiser_plongeur(Plongeur *p) {
     p->niveau_fatigue = 0;
     p->perles = 42;
     p->profondeur = 247;
-    // Initialisation de l'etat de paralysie (Meduse)
     p->est_paralyse = 0;
 }
 
@@ -56,23 +55,22 @@ void afficher_interface(const Plongeur *p) {
     }
 }
 
-int attaquer_creature(Plongeur *p, CreatureMarine *c) {
-    // Règle 3: Calcul des degats de base (15-25)
+// MODIFIÉ : Utilise des pointeurs de sortie pour la conso O2 et la fatigue
+int attaquer_creature(Plongeur *p, CreatureMarine *c, int *conso_oxygene, int *fatigue_augmentee) {
     int attaque_min = 15;
     int attaque_max = 25;
 
     int degats_base = rand() % (attaque_max - attaque_min + 1) + attaque_min;
 
-    // Soustraire la defense de la creature
     int degats = degats_base - c->defense;
 
-    // 1. Appliquer l'effet du Crabe Geant (réduction de 20% des dégâts subis)
+    // 1. Appliquer l'effet du Crabe Geant
     if (strcmp(c->nom, "Crabe Geant") == 0) {
         degats = (int)(degats * 0.80);
         printf("   >> Crabe Geant: Carapace durcie! Degats reduits de 20%%.\n");
     }
 
-    // 2. CORRECTION CRITIQUE : Garantir au moins 1 degat APRES TOUTES les reductions
+    // 2. Garantir au moins 1 degat
     if (degats < 1) degats = 1;
 
     // Application des degats a la creature
@@ -82,29 +80,17 @@ int attaquer_creature(Plongeur *p, CreatureMarine *c) {
     }
 
     // Règle 2: Consommation d'oxygene (-2 a -4)
-    int conso_oxygene = rand() % (4 - 2 + 1) + 2;
-    p->niveau_oxygene -= conso_oxygene;
+    *conso_oxygene = rand() % (4 - 2 + 1) + 2; // Stocke la conso O2
+    p->niveau_oxygene -= *conso_oxygene;
 
     // Règle 1: Augmentation de la fatigue (+1)
+    *fatigue_augmentee = 0; // Initialisation
     if (p->niveau_fatigue < 5) {
         p->niveau_fatigue += 1;
+        *fatigue_augmentee = 1; // Stocke l'augmentation de fatigue (1 ou 0)
     }
 
-    // Affichage pour le journal de combat
-    printf("\n[Attaque] Vous attaquez %s et infligez %d degats !\n", c->nom, degats);
-    printf("Oxygene consomme: -%d (action de combat). Fatigue augmentee: +1 (effort physique).\n", conso_oxygene);
-
-    // Affichage immediat des ressources modifiees
-    printf("\n--- STATUT PLONGEUR APRES ATTAQUE ---\n");
-
-    printf("Vie     [");
-    afficher_barre(p->points_de_vie, p->points_de_vie_max);
-    printf("] %d/%d\n", p->points_de_vie, p->points_de_vie_max);
-
-    printf("Oxygene [");
-    afficher_barre(p->niveau_oxygene, p->niveau_oxygene_max);
-    printf("] %d/%d\n", p->niveau_oxygene, p->niveau_oxygene_max);
-    printf("---------------------------------------\n");
+    // RETRAIT DE L'AFFICHAGE du journal de combat pour le mettre dans l'interface stylisée
 
     return degats;
 }

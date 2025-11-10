@@ -2,10 +2,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> // Nécessaire pour strcmp
+#include <string.h>
 #include "combat.h"
 #include "joueur.h"
 #include "creatures.h"
+
+// Déclaration de la fonction utilitaire (doit être dans joueur.c)
+extern void afficher_barre(int valeur, int max);
 
 // ----------------------------------------------------
 // NOUVEAU: Fonctions utilitaires de tri (Étape 3)
@@ -32,24 +35,46 @@ void trier_creatures_par_vitesse(CreatureMarine creatures[], int nb) {
 }
 
 // ----------------------------------------------------
-// INTERFACE DE COMBAT (Modifiée pour ne pas afficher la riposte immédiate)
+// INTERFACE DE COMBAT (Modifiée pour afficher les PV et les ressources réelles)
 // ----------------------------------------------------
 
-void afficher_interface_combat(Plongeur *p, CreatureMarine *c, int degats_infliges) {
+void afficher_interface_combat(Plongeur *p, CreatureMarine *c, int degats_infliges, int conso_oxygene, int fatigue_augmentee) {
     char nom_creature[32];
     snprintf(nom_creature, sizeof(nom_creature), "%s", c->nom);
 
-    printf("\n+---------------------------------------------------------+\n");
-    // Suppression des caracteres speciaux (┬á)
-    printf("|  PLONGEUR (HARPON)                                      |\n");
-    printf("|                                                         |\n");
-    printf("|     =======>                                            |\n");
-    printf("|                                                         |\n");
-    // Utilisation d'espaces ASCII standards et ajustement du formatage
-    printf("|  Degats infliges : %-3d points a %-25s |\n", degats_infliges, nom_creature);
-    printf("+---------------------------------------------------------+\n");
-    // L'Oxygene et la Fatigue sont gérés dans attaquer_creature (joueur.c)
+    printf("\n+========================== COMBAT SOUS-MARIN ===========================+\n");
+    printf("|  Vous attaquez le %-25s avec votre Harpon Rouille        |\n", nom_creature);
+    printf("|                                                                    |\n");
+
+    // Visualisation du combat
+    printf("|     PLONGEUR              VS              %-25s|\n", nom_creature);
+    printf("|                                                                    |\n");
+    printf("|    ==========>                            <===========         |\n");
+    printf("|                                                                    |\n");
+
+    // Ligne 1: Dégâts et PV restants de la créature
+    printf("|  Degats infliges: %-3d points. PV de %s : %d/%d           |\n",
+           degats_infliges,
+           c->nom,
+           c->points_de_vie_actuels,
+           c->points_de_vie_max);
+
+    // Ligne 2: Message de riposte
+    printf("|  (Riposte de la creature marine dans la phase suivante...)         |\n");
+
+    printf("+====================================================================+\n");
+
+    // --- AFFICHAGE DES RESSOURCES SOUS LE CADRE ---
+    printf(" Oxygene consomme: -%d (action de combat). Actuel: %d/%d\n",
+           conso_oxygene,
+           p->niveau_oxygene,
+           p->niveau_oxygene_max);
+
+    printf(" Fatigue augmentee: +%d (effort physique). Actuel: %d/5\n",
+           fatigue_augmentee,
+           p->niveau_fatigue);
 }
+
 
 // ----------------------------------------------------
 // Logique des Règles (Inchangée)
@@ -80,7 +105,7 @@ void consommer_oxygene_auto(Plongeur *p) {
 }
 
 // ----------------------------------------------------
-// ATTAQUE CREATURE (Réintégrée avec Stress O2 et Effets Spéciaux - Étape 3/4)
+// ATTAQUE CREATURE (Inchangée)
 // ----------------------------------------------------
 
 void attaque_creature(Plongeur *p, CreatureMarine c) {
@@ -101,9 +126,8 @@ void attaque_creature(Plongeur *p, CreatureMarine c) {
 
     for (int i = 0; i < nb_attaques; i++) {
 
-        // Règle Méduse : Piqûre paralysante (Réduit les attaques du joueur de 1 au prochain tour)
+        // Règle Méduse : Piqûre paralysante
         if (strcmp(c.nom, "Meduse") == 0) {
-            // Assurez-vous que le nom dans la structure CreatureMarine correspond à "Meduse"
             p->est_paralyse = 1;
             printf("   >> Meduse: Piqure paralysante! Attaques du plongeur reduites au prochain tour.\n");
         }
@@ -136,7 +160,7 @@ void attaque_creature(Plongeur *p, CreatureMarine c) {
 }
 
 // ----------------------------------------------------
-// FONCTION COMBAT (Réintégrée avec Tri et Paralysie)
+// FONCTION COMBAT (Modifiée pour passer les valeurs O2/Fatigue à l'interface)
 // ----------------------------------------------------
 
 void combat(Plongeur *p, CreatureMarine creatures[], int nb) {
@@ -182,14 +206,30 @@ void combat(Plongeur *p, CreatureMarine creatures[], int nb) {
                 if (cible_id >= 0 && cible_id < nb && creatures[cible_id].est_vivant) {
                     int pv_avant = creatures[cible_id].points_de_vie_actuels;
 
+                    // NOUVEAU: Variables pour récupérer les changements
+                    int conso_oxygene_reel = 0;
+                    int fatigue_augmentee_reelle = 0;
+
                     // L'attaque inflige les degats, la fatigue et l'O2 (voir joueur.c)
-                    attaquer_creature(p, &creatures[cible_id]);
+                    // Les pointeurs récupèrent les valeurs des changements
+                    attaquer_creature(p, &creatures[cible_id], &conso_oxygene_reel, &fatigue_augmentee_reelle);
+
                     attaques_effectuees++;
 
                     int degats_infliges = pv_avant - creatures[cible_id].points_de_vie_actuels;
 
-                    // Affichage de la nouvelle interface de combat après l'attaque
-                    afficher_interface_combat(p, &creatures[cible_id], degats_infliges);
+                    // Affichage immédiat du journal de bord (qui était dans joueur.c)
+                    printf("\n[Attaque] Vous attaquez %s et infligez %d degats !\n", creatures[cible_id].nom, degats_infliges);
+                    printf("Oxygene consomme: -%d (action de combat). Fatigue augmentee: +%d (effort physique).\n", conso_oxygene_reel, fatigue_augmentee_reelle);
+
+                    printf("\n--- STATUT PLONGEUR APRES ATTAQUE ---\n");
+                    printf("Vie     ["); afficher_barre(p->points_de_vie, p->points_de_vie_max); printf("] %d/%d\n", p->points_de_vie, p->points_de_vie_max);
+                    printf("Oxygene ["); afficher_barre(p->niveau_oxygene, p->niveau_oxygene_max); printf("] %d/%d\n", p->niveau_oxygene, p->niveau_oxygene_max);
+                    printf("---------------------------------------\n");
+
+
+                    // Affichage de la nouvelle interface de combat stylisée après l'attaque
+                    afficher_interface_combat(p, &creatures[cible_id], degats_infliges, conso_oxygene_reel, fatigue_augmentee_reelle);
 
                 } else {
                     printf("Cible invalide ou creature deja vaincue.\n");
@@ -218,7 +258,7 @@ void combat(Plongeur *p, CreatureMarine creatures[], int nb) {
 
         for (int i = 0; i < nb; i++)
             if (creatures[i].est_vivant)
-                attaque_creature(p, creatures[i]); // Applique les dégâts et le stress O2
+                attaque_creature(p, creatures[i]); // Applique les dégâts et le stress O2 (Note: cette fonction prend une copie de la créature, ce qui est correct ici)
 
         // ÉTAPE 6 : Récupération fatigue
         if (p->niveau_fatigue > 0) {

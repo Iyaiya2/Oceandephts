@@ -1,9 +1,9 @@
 // combat.c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "combat.h"
+#include "inventaire.h"
 #include "joueur.h"
 #include "creatures.h"
 
@@ -192,55 +192,93 @@ void combat(Plongeur *p, CreatureMarine creatures[], int nb) {
             printf("!!! PARALYSIE (-1 Attaque): Seulement %d attaques disponibles ce tour. !!!\n", max_attaques);
         }
 
-        // ÉTAPE 2 : Actions du joueur
-        while (attaques_effectuees < max_attaques) {
-            printf("Actions disponibles (Attaques restantes : %d/%d):\n", max_attaques - attaques_effectuees, max_attaques);
-            printf("1 - Attaquer avec le harpon\n2 - Utiliser une competence marine\n3 - Utiliser un objet\n4 - Terminer le tour\n> ");
-            if (scanf("%d", &choix) != 1) { /* Gestion d'erreur */ }
+ while (attaques_effectuees < max_attaques) {
+    printf("Actions disponibles (Attaques restantes : %d/%d):\n", max_attaques - attaques_effectuees, max_attaques);
+    printf("1 - Attaquer avec le harpon\n2 - Utiliser une competence marine\n3 - Utiliser un objet\n4 - Terminer le tour\n> ");
+    if (scanf("%d", &choix) != 1) { /* Gestion d'erreur */ }
 
-            if (choix == 1) {
-                printf("Ciblez une creature (ID) : > ");
-                if (scanf("%d", &cible_id) != 1) { /* Gestion d'erreur */ }
-                cible_id--;
+    if (choix == 1) {
+        printf("Ciblez une creature (ID) : > ");
+        if (scanf("%d", &cible_id) != 1) { /* Gestion d'erreur */ }
+        cible_id--;
 
-                if (cible_id >= 0 && cible_id < nb && creatures[cible_id].est_vivant) {
-                    int pv_avant = creatures[cible_id].points_de_vie_actuels;
+        if (cible_id >= 0 && cible_id < nb && creatures[cible_id].est_vivant) {
+            int pv_avant = creatures[cible_id].points_de_vie_actuels;
 
-                    // NOUVEAU: Variables pour récupérer les changements
-                    int conso_oxygene_reel = 0;
-                    int fatigue_augmentee_reelle = 0;
+            int conso_oxygene_reel = 0;
+            int fatigue_augmentee_reelle = 0;
 
-                    // L'attaque inflige les degats, la fatigue et l'O2 (voir joueur.c)
-                    // Les pointeurs récupèrent les valeurs des changements
-                    attaquer_creature(p, &creatures[cible_id], &conso_oxygene_reel, &fatigue_augmentee_reelle);
+            attaquer_creature(p, &creatures[cible_id], &conso_oxygene_reel, &fatigue_augmentee_reelle);
 
-                    attaques_effectuees++;
+            attaques_effectuees++;
 
-                    int degats_infliges = pv_avant - creatures[cible_id].points_de_vie_actuels;
+            int degats_infliges = pv_avant - creatures[cible_id].points_de_vie_actuels;
 
-                    // Affichage immédiat du journal de bord (qui était dans joueur.c)
-                    printf("\n[Attaque] Vous attaquez %s et infligez %d degats !\n", creatures[cible_id].nom, degats_infliges);
-                    printf("Oxygene consomme: -%d (action de combat). Fatigue augmentee: +%d (effort physique).\n", conso_oxygene_reel, fatigue_augmentee_reelle);
+            printf("\n[Attaque] Vous attaquez %s et infligez %d degats !\n", creatures[cible_id].nom, degats_infliges);
+            printf("Oxygene consomme: -%d (action de combat). Fatigue augmentee: +%d (effort physique).\n",
+                   conso_oxygene_reel, fatigue_augmentee_reelle);
 
-                    printf("\n--- STATUT PLONGEUR APRES ATTAQUE ---\n");
-                    printf("Vie     ["); afficher_barre(p->points_de_vie, p->points_de_vie_max); printf("] %d/%d\n", p->points_de_vie, p->points_de_vie_max);
-                    printf("Oxygene ["); afficher_barre(p->niveau_oxygene, p->niveau_oxygene_max); printf("] %d/%d\n", p->niveau_oxygene, p->niveau_oxygene_max);
-                    printf("---------------------------------------\n");
+            printf("\n--- STATUT PLONGEUR APRES ATTAQUE ---\n");
+            printf("Vie     ["); afficher_barre(p->points_de_vie, p->points_de_vie_max);
+            printf("] %d/%d\n", p->points_de_vie, p->points_de_vie_max);
+            printf("Oxygene ["); afficher_barre(p->niveau_oxygene, p->niveau_oxygene_max);
+            printf("] %d/%d\n", p->niveau_oxygene, p->niveau_oxygene_max);
+            printf("---------------------------------------\n");
 
+            afficher_interface_combat(p, &creatures[cible_id], degats_infliges, conso_oxygene_reel, fatigue_augmentee_reelle);
 
-                    // Affichage de la nouvelle interface de combat stylisée après l'attaque
-                    afficher_interface_combat(p, &creatures[cible_id], degats_infliges, conso_oxygene_reel, fatigue_augmentee_reelle);
-
-                } else {
-                    printf("Cible invalide ou creature deja vaincue.\n");
-                }
-            } else if (choix == 4) {
-                printf("Fin du tour du plongeur.\n");
-                break;
-            } else {
-                printf("Action non valide ou non implemente.\n");
-            }
+        } else {
+            printf("Cible invalide ou creature deja vaincue.\n");
         }
+    }
+    else if (choix == 3) {
+        // Utiliser un objet
+        afficher_et_gestion_inventaire(&(p->inventaire));
+
+        int obj_id;
+        printf("Selectionnez un objet a utiliser (ID) : ");
+        if (scanf("%d", &obj_id) != 1) { /* Gestion erreur */ }
+        obj_id--;
+
+        if (obj_id >= 0 && obj_id < MAX_OBJETS && p->inventaire.inventaire[obj_id].nom[0] != '\0'
+            && p->inventaire.inventaire[obj_id].quantite > 0) {
+
+            Objet *obj = &p->inventaire.inventaire[obj_id];
+
+            if (obj->pv > 0) {
+                p->points_de_vie += obj->pv;
+                if (p->points_de_vie > p->points_de_vie_max) p->points_de_vie = p->points_de_vie_max;
+                printf("Vous utilisez %s : +%d PV\n", obj->nom, obj->pv);
+            }
+            if (obj->oxygene > 0) {
+                p->niveau_oxygene += obj->oxygene;
+                if (p->niveau_oxygene > p->niveau_oxygene_max) p->niveau_oxygene = p->niveau_oxygene_max;
+                printf("Vous utilisez %s : +%d Oxygene\n", obj->nom, obj->oxygene);
+            }
+            if (obj->fatigue > 0) {
+                p->niveau_fatigue -= obj->fatigue;
+                if (p->niveau_fatigue < 0) p->niveau_fatigue = 0;
+                printf("Vous utilisez %s : Fatigue reduite de %d\n", obj->nom, obj->fatigue);
+            }
+
+            obj->quantite--;
+            if (obj->quantite == 0) {
+                obj->nom[0] = '\0'; // Supprime l'objet de l'inventaire
+            }
+
+        } else {
+            printf("Objet invalide ou vide.\n");
+        }
+    }
+    else if (choix == 4) {
+        printf("Fin du tour du plongeur.\n");
+        break;
+    }
+    else {
+        printf("Action non valide ou non implementee.\n");
+    }
+}
+
 
         if (attaques_effectuees >= max_attaques) {
             printf("\nLimite d'attaques (Fatigue) atteinte pour ce tour. Fin de l'action du plongeur.\n");

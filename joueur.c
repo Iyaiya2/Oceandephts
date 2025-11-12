@@ -5,6 +5,7 @@
 #include <string.h>
 #include "joueur.h"
 #include "creatures.h"
+#include "inventaire.h" // <-- Ajouté pour pouvoir initialiser l'inventaire
 
 void initialiser_plongeur(Plongeur *p) {
     p->points_de_vie_max = 100;
@@ -15,7 +16,33 @@ void initialiser_plongeur(Plongeur *p) {
     p->perles = 42;
     p->profondeur = 247;
     p->est_paralyse = 0;
+
+    // --- Initialisation de l'inventaire directement ---
+    memset(&p->inventaire, 0, sizeof(Inventaire));
+
+    strcpy(p->inventaire.inventaire[0].nom, "Harpon Rouille");
+    p->inventaire.inventaire[0].attaque = 12;
+    p->inventaire.inventaire[0].quantite = 1;
+
+    strcpy(p->inventaire.inventaire[1].nom, "Combi Neoprene");
+    p->inventaire.inventaire[1].defense = 5;
+    p->inventaire.inventaire[1].quantite = 1;
+
+    strcpy(p->inventaire.inventaire[2].nom, "Capsule O2");
+    p->inventaire.inventaire[2].oxygene = 20;
+    p->inventaire.inventaire[2].quantite = 3;
+
+    strcpy(p->inventaire.inventaire[3].nom, "Trousse de soin");
+    p->inventaire.inventaire[3].pv = 25;
+    p->inventaire.inventaire[3].quantite = 2;
+
+    strcpy(p->inventaire.inventaire[4].nom, "Stimulant");
+    p->inventaire.inventaire[4].fatigue = 2;
+    p->inventaire.inventaire[4].quantite = 2;
+
+    p->inventaire.perles = p->perles;
 }
+
 
 void afficher_barre(int valeur, int max) {
     int largeur = 40;
@@ -89,8 +116,6 @@ int attaquer_creature(Plongeur *p, CreatureMarine *c, int *conso_oxygene, int *f
         p->niveau_fatigue += 1;
         *fatigue_augmentee = 1; // Stocke l'augmentation de fatigue (1 ou 0)
     }
-
-    // RETRAIT DE L'AFFICHAGE du journal de combat pour le mettre dans l'interface stylisée
 
     return degats;
 }

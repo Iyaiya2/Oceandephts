@@ -10,6 +10,4 @@ add_executable(oceandephs
         creatures.c
         combat.c
         inventaire.c
-        carte.c
-        sauvegarde.c
 )
